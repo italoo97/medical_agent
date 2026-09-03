@@ -1,0 +1,75 @@
+[project]
+name = "medical-agent"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Italo Canhestro",email = "italohugodf39@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "pydantic (>=2.13.5,<3.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "medical_agent", from = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"      
+pytest-cov = "^5.0.0" 
+ruff = "^0.4.0"       
+mypy = "^1.13.0"        
+taskipy = "^1.14.0"    
+pre-commit = "^4.0.0"    
+commitizen = "^4.0.0"    
+
+[tool.ruff]
+line-length = 79      
+exclude = []     
+
+[tool.ruff.lint]
+preview = true            
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+ignore = ['PLR2004', 'PLR0917', 'PLR0913', 'F403', 'F405']
+
+[tool.ruff.format]
+preview = true
+quote-style = 'single'   
+
+[tool.mypy]
+python_version = "3.13"
+strict = true              
+ignore_missing_imports = true  
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["pydantic_settings.*"]
+ignore_missing_imports = true
+ignore_errors = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"         
+version_scheme = "pep440"
+version_provider = "poetry"
+update_changelog_on_bump = true  
+major_version_zero = true        
+
+[tool.taskipy.tasks]
+lint       = "ruff check ."       
+format     = "ruff format ."      
+pre_format = "ruff check --fix ." 
+test       = "pytest -s -x -vv"   
+post_test  = "coverage html"      
+type_check = "mypy src/"          
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]              
+pythonpath = ["src"]              
+python_files = ["test_*.py"]      
+python_functions = ["test_*"]     
+addopts = "--cov=study_mcp --cov-report=term-missing --cov-fail-under=0"
