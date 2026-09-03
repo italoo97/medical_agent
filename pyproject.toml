@@ -72,4 +72,4 @@ testpaths = ["tests"]
 pythonpath = ["src"]              
 python_files = ["test_*.py"]      
 python_functions = ["test_*"]     
-addopts = "--cov=study_mcp --cov-report=term-missing --cov-fail-under=0"
+addopts = "--cov=medical_agent --cov-report=term-missing --cov-fail-under=0"
