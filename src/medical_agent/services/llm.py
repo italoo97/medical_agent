@@ -2,6 +2,7 @@ import json
 from typing import Any, Final, TypeVar, cast
 
 import httpx
+from langsmith import traceable
 from pydantic import BaseModel, ValidationError
 
 from medical_agent.core.config import Settings
@@ -25,6 +26,7 @@ class OpenRouterService(BaseLLMService):
         self._settings = settings
         self._http_client = http_client
 
+    @traceable(name='openrouter_generate')
     async def generate(self, prompt: str) -> ChatResponse:
         data = await self._call([
             {'role': 'system', 'content': self._settings.system_prompt},
@@ -33,7 +35,8 @@ class OpenRouterService(BaseLLMService):
         content = str(data['choices'][0]['message']['content'])
         return ChatResponse(model=data['model'], content=content)
 
-    async def generate_structured(
+    @traceable(name='openrouter_generate_structured')
+    async def generate_structured(  # type: ignore[override]
         self, system_prompt: str, user_prompt: str, schema: type[SchemaT]
     ) -> SchemaT:
         data = await self._call(
