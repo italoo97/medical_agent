@@ -22,6 +22,7 @@ from medical_agent.prompts.v1.identify_intent import (
     build_user_prompt,
 )
 from medical_agent.services.base import BaseLLMService
+from medical_agent.services.calendar_client import Professional
 from medical_agent.services.llm import OpenRouterService
 
 load_dotenv()
@@ -33,14 +34,20 @@ async def main() -> None:
     async with httpx.AsyncClient(timeout=30.0) as http_client:
         llm_service: BaseLLMService = OpenRouterService(settings, http_client)
 
+        professionals = [
+            Professional('cal-john', 'John Doe', 'Cardiology'),
+            Professional('cal-jane', 'Jane Doe', 'Dermatology'),
+            Professional('cal-richard', 'Richard Roe', 'Neurology'),
+        ]
+
         user_message = (
-            'Oi, queria marcar uma consulta com um neurologista amanha as '
-            '15h'
+            'Oi, queria cancelar minha consulta com o dr jhon, sou a '
+            'Maria Santos'
         )
 
         intent = await llm_service.generate_structured(
             system_prompt=build_system_prompt(),
-            user_prompt=build_user_prompt(user_message),
+            user_prompt=build_user_prompt(user_message, professionals),
             schema=Intent,
         )
 

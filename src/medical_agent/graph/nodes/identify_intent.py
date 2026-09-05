@@ -18,7 +18,9 @@ def make_identify_intent_node(
     ) -> dict[str, Intent]:
         intent = await llm_service.generate_structured(
             system_prompt=build_system_prompt(),
-            user_prompt=build_user_prompt(state['user_message']),
+            user_prompt=build_user_prompt(
+                state['user_message'], state['professionals']
+            ),
             schema=Intent,
         )
         return {'intent': intent}

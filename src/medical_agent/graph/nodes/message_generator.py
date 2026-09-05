@@ -28,6 +28,7 @@ def make_message_generator_node(
             intent=state['intent'],
             professional_name=professional_name,
             error=state['error'],
+            appointment_datetime=state['appointment_datetime'],
         )
 
         chat_response = await llm_service.generate(

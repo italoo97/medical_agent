@@ -16,6 +16,7 @@ def _build_state(
         'intent': intent,
         'professionals': service.list_professionals(),
         'calendar_id': None,
+        'appointment_datetime': None,
         'response': '',
         'error': None,
     }
@@ -40,20 +41,41 @@ def test_books_appointment_when_slot_is_available() -> None:
     assert result['calendar_id'] is not None
 
 
-def test_returns_error_when_date_is_missing() -> None:
+def test_returns_error_listing_every_missing_field() -> None:
     intent = Intent(intent='schedule', professional_name='John Doe')
     state, service = _build_state(intent)
     scheduler = make_scheduler_node(service)
 
     result = asyncio.run(scheduler(state))
 
-    assert result['error'] == 'Missing date or time to schedule.'
+    assert result['error'] == (
+        'Não consegui agendar a consulta porque faltou informar: '
+        'a data, o horário, seu nome.'
+    )
+
+
+def test_returns_error_when_only_patient_name_is_missing() -> None:
+    intent = Intent(
+        intent='schedule',
+        professional_name='John Doe',
+        date='2026-09-10',
+        time='14:00',
+    )
+    state, service = _build_state(intent)
+    scheduler = make_scheduler_node(service)
+
+    result = asyncio.run(scheduler(state))
+
+    assert result['error'] == (
+        'Não consegui agendar a consulta porque faltou informar: seu nome.'
+    )
 
 
 def test_returns_error_when_professional_not_found() -> None:
     intent = Intent(
         intent='schedule',
         professional_name='Nonexistent Doctor',
+        patient_name='Maria Santos',
         date='2026-09-10',
         time='14:00',
     )

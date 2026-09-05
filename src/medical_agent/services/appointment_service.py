@@ -20,6 +20,51 @@ class AppointmentService:
     def list_professionals(self) -> list[Professional]:
         return self._calendar_client.list_professionals()
 
+    def register_professional(self, calendar_id: str) -> bool:
+        return self._calendar_client.register_calendar(calendar_id)
+
+    def remove_professional(self, calendar_id: str) -> bool:
+        return self._calendar_client.unregister_calendar(calendar_id)
+
+    def find_professional_with_appointment(
+        self,
+        professionals: list[Professional],
+        patient_name: str,
+        start: datetime,
+    ) -> Professional | None:
+        """Procura, em todas as agendas, quem tem consulta desse paciente.
+
+        Usado quando o paciente pede para cancelar sem dizer (ou acertar)
+        o nome do profissional -- em vez de falhar, procuramos em cada
+        agenda por uma consulta marcada exatamente para esse patient_name
+        e horario.
+        """
+        for professional in professionals:
+            if self._calendar_client.has_appointment(
+                professional.calendar_id, patient_name, start
+            ):
+                return professional
+        return None
+
+    def find_patient_appointment(
+        self, professionals: list[Professional], patient_name: str
+    ) -> tuple[Professional, datetime] | None:
+        """Procura a proxima consulta futura desse paciente, em qualquer
+        agenda.
+
+        Essa e a mesma "tool" reaproveitada por qualquer fluxo que precise
+        saber se/quando um paciente tem consulta marcada -- hoje pelo
+        intent "check" (o paciente perguntando diretamente), e no futuro
+        por um cancelamento sem data/hora informados, por exemplo.
+        """
+        for professional in professionals:
+            start = self._calendar_client.find_upcoming_appointment(
+                professional.calendar_id, patient_name
+            )
+            if start is not None:
+                return professional, start
+        return None
+
     def book_appointment(
         self,
         calendar_id: str,

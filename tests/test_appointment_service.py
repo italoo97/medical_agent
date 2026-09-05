@@ -52,3 +52,59 @@ def test_raises_when_cancelling_nonexistent_appointment() -> None:
         service.cancel_appointment(
             calendar_id, 'Ninguem', datetime(2026, 9, 10, 14, 0)
         )
+
+
+def test_register_professional_returns_true_when_new() -> None:
+    service, calendar_id = _build_service()
+
+    assert service.register_professional(calendar_id) is True
+
+
+def test_register_professional_returns_false_when_already_registered() -> None:
+    service, calendar_id = _build_service()
+
+    service.register_professional(calendar_id)
+
+    assert service.register_professional(calendar_id) is False
+
+
+def test_remove_professional_returns_true_when_registered() -> None:
+    service, calendar_id = _build_service()
+    service.register_professional(calendar_id)
+
+    assert service.remove_professional(calendar_id) is True
+
+
+def test_remove_professional_returns_false_when_not_registered() -> None:
+    service, calendar_id = _build_service()
+
+    assert service.remove_professional(calendar_id) is False
+
+
+def test_finds_professional_with_matching_appointment() -> None:
+    service = AppointmentService(FakeCalendarClient())
+    professionals = service.list_professionals()
+    target = professionals[1]
+    start = datetime(2026, 9, 10, 14, 0)
+    service.book_appointment(
+        target.calendar_id, start, 'Maria Santos', 'check-up'
+    )
+
+    found = service.find_professional_with_appointment(
+        professionals, 'Maria Santos', start
+    )
+
+    assert found == target
+
+
+def test_find_professional_with_appointment_returns_none_when_no_match() -> (
+    None
+):
+    service = AppointmentService(FakeCalendarClient())
+    professionals = service.list_professionals()
+
+    found = service.find_professional_with_appointment(
+        professionals, 'Ninguem', datetime(2026, 9, 10, 14, 0)
+    )
+
+    assert found is None

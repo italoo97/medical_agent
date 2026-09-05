@@ -13,6 +13,7 @@ def build_user_prompt(
     intent: Intent | None,
     professional_name: str | None,
     error: str | None,
+    appointment_datetime: str | None = None,
 ) -> str:
     lines = [
         _SECTIONS['header_original_message'].format(
@@ -38,6 +39,14 @@ def build_user_prompt(
     lines.append(
         _SECTIONS['line_time'].format(time=intent.time or 'not provided')
     )
+
+    if appointment_datetime is not None:
+        found_date, found_time = appointment_datetime.split('T')
+        lines.append(
+            _SECTIONS['line_found_appointment'].format(
+                date=found_date, time=found_time[:5]
+            )
+        )
 
     if error is not None:
         lines.append(_SECTIONS['line_result_failed'].format(reason=error))

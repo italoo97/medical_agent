@@ -3,6 +3,9 @@ from datetime import datetime
 from typing import Any
 
 from medical_agent.graph.nodes._matching import find_professional
+from medical_agent.graph.nodes._validation import (
+    build_missing_fields_error,
+)
 from medical_agent.graph.state import AppointmentState
 from medical_agent.services.appointment_service import (
     AppointmentService,
@@ -15,8 +18,13 @@ def make_scheduler_node(
 ) -> Callable[[AppointmentState], Coroutine[Any, Any, dict[str, str | None]]]:
     async def scheduler(state: AppointmentState) -> dict[str, str | None]:
         intent = state['intent']
-        if intent is None or not intent.date or not intent.time:
-            return {'error': 'Missing date or time to schedule.'}
+        validation_error = build_missing_fields_error(
+            intent, 'agendar a consulta'
+        )
+        if validation_error is not None:
+            return {'error': validation_error}
+        assert intent is not None
+        assert intent.patient_name
 
         professional = find_professional(
             state['professionals'], intent.professional_name, intent.specialty
@@ -30,7 +38,7 @@ def make_scheduler_node(
             appointment_service.book_appointment(
                 professional.calendar_id,
                 start,
-                intent.patient_name or 'Patient',
+                intent.patient_name,
                 intent.reason or 'General consultation',
             )
         except SlotUnavailableError as error:

@@ -9,5 +9,6 @@ class AppointmentState(TypedDict):
     intent: Intent | None
     professionals: list[Professional]
     calendar_id: str | None
+    appointment_datetime: str | None
     response: str
     error: str | None

@@ -18,6 +18,7 @@ class FakeCalendarClient:
 
     def __init__(self) -> None:
         self._events: list[_FakeEvent] = []
+        self._registered_ids: set[str] = set()
         self._professionals = [
             Professional('fake-calendar-john', 'Dr. John Doe', 'Cardiology'),
             Professional('fake-calendar-jane', 'Dr. Jane Doe', 'Dermatology'),
@@ -62,3 +63,38 @@ class FakeCalendarClient:
                 return
 
         raise LookupError('No matching appointment found to cancel')
+
+    def has_appointment(
+        self, calendar_id: str, patient_name: str, start: datetime
+    ) -> bool:
+        return any(
+            event.calendar_id == calendar_id
+            and event.patient_name == patient_name
+            and event.start == start
+            for event in self._events
+        )
+
+    def find_upcoming_appointment(
+        self, calendar_id: str, patient_name: str
+    ) -> datetime | None:
+        matches = [
+            event.start
+            for event in self._events
+            if event.calendar_id == calendar_id
+            and event.patient_name == patient_name
+        ]
+        if not matches:
+            return None
+        return min(matches)
+
+    def register_calendar(self, calendar_id: str) -> bool:
+        if calendar_id in self._registered_ids:
+            return False
+        self._registered_ids.add(calendar_id)
+        return True
+
+    def unregister_calendar(self, calendar_id: str) -> bool:
+        if calendar_id not in self._registered_ids:
+            return False
+        self._registered_ids.remove(calendar_id)
+        return True

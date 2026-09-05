@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     google_service_account_json: SecretStr = Field(
         validation_alias='GOOGLE_SERVICE_ACCOUNT_JSON'
     )
+    admin_api_key: SecretStr = Field(validation_alias='ADMIN_API_KEY')
+    timezone: str = 'America/Sao_Paulo'
 
 
 @lru_cache

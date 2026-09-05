@@ -3,6 +3,7 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 
 from medical_agent.graph.nodes.canceller import make_canceller_node
+from medical_agent.graph.nodes.checker import make_checker_node
 from medical_agent.graph.nodes.identify_intent import (
     make_identify_intent_node,
 )
@@ -36,6 +37,10 @@ def build_graph(
         make_canceller_node(appointment_service),
     )
     graph.add_node(  # type: ignore[call-overload]
+        'checker',
+        make_checker_node(appointment_service),
+    )
+    graph.add_node(  # type: ignore[call-overload]
         'message_generator',
         make_message_generator_node(llm_service),
     )
@@ -48,12 +53,14 @@ def build_graph(
         {
             'schedule': 'scheduler',
             'cancel': 'canceller',
+            'check': 'checker',
             'unknown': 'message_generator',
         },
     )
 
     graph.add_edge('scheduler', 'message_generator')
     graph.add_edge('canceller', 'message_generator')
+    graph.add_edge('checker', 'message_generator')
     graph.add_edge('message_generator', END)
 
     return graph.compile()
