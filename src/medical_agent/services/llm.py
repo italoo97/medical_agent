@@ -27,9 +27,12 @@ class OpenRouterService(BaseLLMService):
         self._http_client = http_client
 
     @traceable(name='openrouter_generate')
-    async def generate(self, prompt: str) -> ChatResponse:
+    async def generate(
+        self, prompt: str, system_prompt: str | None = None
+    ) -> ChatResponse:
+        effective_system_prompt = system_prompt or self._settings.system_prompt
         data = await self._call([
-            {'role': 'system', 'content': self._settings.system_prompt},
+            {'role': 'system', 'content': effective_system_prompt},
             {'role': 'user', 'content': prompt},
         ])
         content = str(data['choices'][0]['message']['content'])
@@ -81,7 +84,16 @@ class OpenRouterService(BaseLLMService):
                 f'OpenRouter request failed: {error}'
             ) from error
 
-        return cast(dict[str, Any], response.json())
+        data = cast(dict[str, Any], response.json())
+
+        if 'choices' not in data:
+            error_payload = data.get('error', {})
+            error_message = error_payload.get('message', 'Unknown error')
+            raise UpstreamProviderError(
+                f'OpenRouter returned no choices: {error_message}'
+            )
+
+        return data
 
     def _build_headers(self) -> dict[str, str]:
         api_key = self._settings.openrouter_api_key.get_secret_value()

@@ -12,7 +12,9 @@ class BaseLLMService(ABC):
     """Contrato para qualquer provedor de LLM usado pelo agente."""
 
     @abstractmethod
-    async def generate(self, prompt: str) -> ChatResponse:
+    async def generate(
+        self, prompt: str, system_prompt: str | None = None
+    ) -> ChatResponse:
         """Gera uma resposta livre (texto) para o prompt informado."""
         raise NotImplementedError
 

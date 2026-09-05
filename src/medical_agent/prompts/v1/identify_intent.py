@@ -3,6 +3,10 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from medical_agent.prompts.v1._loader import load_sections
+
+_SECTIONS = load_sections('identify_intent.md')
+
 
 class Intent(BaseModel):
     intent: Literal['schedule', 'cancel', 'unknown']
@@ -15,21 +19,11 @@ class Intent(BaseModel):
 
 
 def build_system_prompt() -> str:
-    return (
-        'You extract structured data from patient messages sent to a '
-        'medical appointment scheduling assistant. You never book, '
-        'cancel or confirm anything yourself — you only translate the '
-        'message into JSON matching the given schema.\n\n'
-        'Rules:\n'
-        '- intent must be "schedule", "cancel" or "unknown".\n'
-        '- date must be in "YYYY-MM-DD" format if present, else null.\n'
-        '- time must be in "HH:MM" 24h format if present, else null.\n'
-        '- If a field is not mentioned, return null for it.\n'
-        '- Respond with a single JSON object matching the schema, '
-        'nothing else.'
-    )
+    return _SECTIONS['system_prompt']
 
 
 def build_user_prompt(user_message: str) -> str:
     today = datetime.now().strftime('%Y-%m-%d (%A)')
-    return f'Today is {today}.\n' f'Patient message: "{user_message}"'
+    return _SECTIONS['user_prompt'].format(
+        today=today, user_message=user_message
+    )
