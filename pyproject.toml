@@ -76,6 +76,9 @@ pre_format = "ruff check --fix ."
 test       = "pytest -s -x -vv"   
 post_test  = "coverage html"      
 type_check = "mypy src/"          
+gate       = "poetry run task lint && poetry run task type_check && poetry run task test"
+server     = "uvicorn medical_agent.main:app --reload"
+cli        = "python -m medical_agent.main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]              
