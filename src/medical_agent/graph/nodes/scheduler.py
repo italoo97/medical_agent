@@ -11,10 +11,12 @@ from medical_agent.services.appointment_service import (
     AppointmentService,
     SlotUnavailableError,
 )
+from medical_agent.services.conversation_state import ConversationStateStore
 
 
 def make_scheduler_node(
     appointment_service: AppointmentService,
+    conversation_state_store: ConversationStateStore,
 ) -> Callable[[AppointmentState], Coroutine[Any, Any, dict[str, str | None]]]:
     async def scheduler(state: AppointmentState) -> dict[str, str | None]:
         intent = state['intent']
@@ -46,6 +48,16 @@ def make_scheduler_node(
                 'error': str(error),
                 'calendar_id': professional.calendar_id,
             }
+
+        # Guarda "o que essa sessao acabou de agendar" para que um
+        # cancelamento futuro, mesmo sem repetir nome ou profissional,
+        # saiba exatamente qual consulta cancelar.
+        conversation_state_store.save_last_booking(
+            state['session_id'],
+            professional.calendar_id,
+            start,
+            intent.patient_name,
+        )
 
         return {'error': None, 'calendar_id': professional.calendar_id}
 

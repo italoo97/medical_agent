@@ -5,6 +5,7 @@ from medical_agent.services.calendar_client import Professional
 
 
 class AppointmentState(TypedDict):
+    session_id: str
     user_message: str
     intent: Intent | None
     professionals: list[Professional]

@@ -15,26 +15,30 @@ from medical_agent.graph.routing import route_intent
 from medical_agent.graph.state import AppointmentState
 from medical_agent.services.appointment_service import AppointmentService
 from medical_agent.services.base import BaseLLMService
+from medical_agent.services.conversation_state import (
+    ConversationStateStore,
+)
 
 
 def build_graph(
     llm_service: BaseLLMService,
     appointment_service: AppointmentService,
+    conversation_state_store: ConversationStateStore,
 ) -> Any:
     """Monta e compila o StateGraph do agente de agendamento."""
     graph = StateGraph(AppointmentState)
 
     graph.add_node(  # type: ignore[call-overload]
         'identify_intent',
-        make_identify_intent_node(llm_service),
+        make_identify_intent_node(llm_service, conversation_state_store),
     )
     graph.add_node(  # type: ignore[call-overload]
         'scheduler',
-        make_scheduler_node(appointment_service),
+        make_scheduler_node(appointment_service, conversation_state_store),
     )
     graph.add_node(  # type: ignore[call-overload]
         'canceller',
-        make_canceller_node(appointment_service),
+        make_canceller_node(appointment_service, conversation_state_store),
     )
     graph.add_node(  # type: ignore[call-overload]
         'checker',

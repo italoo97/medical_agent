@@ -19,6 +19,7 @@ def _build_state(
     service: AppointmentService, intent: Intent
 ) -> AppointmentState:
     return {
+        'session_id': 'session-1',
         'user_message': '',
         'intent': intent,
         'professionals': service.list_professionals(),
