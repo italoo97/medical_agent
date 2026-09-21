@@ -8,6 +8,8 @@ from medical_agent.prompts.v1.message_generator import (
 )
 from medical_agent.services.base import BaseLLMService
 
+_DEFAULT_LANGUAGE = 'Portuguese'
+
 
 def make_message_generator_node(
     llm_service: BaseLLMService,
@@ -23,12 +25,20 @@ def make_message_generator_node(
                     professional_name = professional.name
                     break
 
+        intent = state['intent']
+        language = (
+            intent.language
+            if intent is not None and intent.language
+            else _DEFAULT_LANGUAGE
+        )
+
         user_prompt = build_user_prompt(
             original_message=state['user_message'],
-            intent=state['intent'],
+            intent=intent,
             professional_name=professional_name,
             error=state['error'],
             appointment_datetime=state['appointment_datetime'],
+            language=language,
         )
 
         chat_response = await llm_service.generate(

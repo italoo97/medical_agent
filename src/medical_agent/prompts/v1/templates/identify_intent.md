@@ -8,20 +8,25 @@ Rules:
 - specialty is the medical specialty mentioned, ALWAYS translated to its standard English term (e.g. "Cardiology", "Dermatology", "Neurology"), even if the patient wrote in another language (e.g. "cardiologista" -> "Cardiology"). If a specialty in the "Available professionals" list already matches (even loosely), use that exact spelling. Null if not mentioned.
 - date must be in "YYYY-MM-DD" format if present, else null.
 - time must be in "HH:MM" 24h format if present, else null.
+- language is the language the PATIENT wrote their message in, as its English name (e.g. "Portuguese", "English", "Spanish", "Italian") -- never a code like "pt" or "en". Base this only on the actual words the patient used, never on a name or place that merely sounds like it belongs to another language: a message that is a single name (e.g. "Italo", "John") or otherwise too short/ambiguous to tell has no reliable language of its own, so in that case return null instead of guessing.
 - If a field is not mentioned, return null for it.
 - Respond with a single JSON object matching the schema, nothing else.
 
 Example:
 Message: "Hi, I want to see Dr. John for a check-up tomorrow at 10am."
-Output: {"intent": "schedule", "professional_name": "John", "specialty": null, "patient_name": null, "date": "<resolved date>", "time": "10:00", "reason": "check-up"}
+Output: {"intent": "schedule", "professional_name": "John", "specialty": null, "patient_name": null, "date": "<resolved date>", "time": "10:00", "reason": "check-up", "language": "English"}
 
 Example:
 Message: "Hi, I'm Maria Santos, do I have an appointment scheduled?"
-Output: {"intent": "check", "professional_name": null, "specialty": null, "patient_name": "Maria Santos", "date": null, "time": null, "reason": null}
+Output: {"intent": "check", "professional_name": null, "specialty": null, "patient_name": "Maria Santos", "date": null, "time": null, "reason": null, "language": "English"}
 
 Example (available professionals include "John Doe (Cardiology)"):
 Message: "quero cancelar minha consulta com o dr jhon, sou a Maria Santos"
-Output: {"intent": "cancel", "professional_name": "John Doe", "specialty": "Cardiology", "patient_name": "Maria Santos", "date": null, "time": null, "reason": null}
+Output: {"intent": "cancel", "professional_name": "John Doe", "specialty": "Cardiology", "patient_name": "Maria Santos", "date": null, "time": null, "reason": null, "language": "Portuguese"}
+
+Example:
+Message: "italo"
+Output: {"intent": "unknown", "professional_name": null, "specialty": null, "patient_name": "Italo", "date": null, "time": null, "reason": null, "language": null}
 
 ### user_prompt
 

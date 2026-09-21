@@ -14,11 +14,14 @@ def build_user_prompt(
     professional_name: str | None,
     error: str | None,
     appointment_datetime: str | None = None,
+    language: str = 'Portuguese',
 ) -> str:
     lines = [
         _SECTIONS['header_original_message'].format(
             original_message=original_message
         ),
+        '',
+        _SECTIONS['line_language'].format(language=language),
         '',
         _SECTIONS['header_outcome'],
     ]
