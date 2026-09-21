@@ -49,6 +49,7 @@ Professionals are **discovered dynamically**: `AppointmentService.list_professio
 |---|---|
 | Agent orchestration | [LangGraph](https://www.langchain.com/langgraph) |
 | LLM provider | [OpenRouter](https://openrouter.ai/) (free-tier models by default) |
+| LLM gateway | [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) — optional, off by default |
 | Calendar backend | [Google Calendar API](https://developers.google.com/calendar/api) via a service account |
 | HTTP server | [FastAPI](https://fastapi.tiangolo.com/) + Uvicorn |
 | Validation | [Pydantic](https://docs.pydantic.dev/) / pydantic-settings |
@@ -122,6 +123,8 @@ cp .env.example .env
 | `LANGSMITH_TRACING` | no | Set to `true` to enable tracing |
 | `LANGSMITH_API_KEY` | no | Required only if tracing is enabled |
 | `LANGSMITH_PROJECT` | no | LangSmith project name for traces |
+| `OPENROUTER_BASE_URL` | no | Base URL of the LLM provider. Defaults to OpenRouter directly; see [Routing LLM traffic through a gateway](#routing-llm-traffic-through-a-gateway-optional) |
+| `CF_AIG_TOKEN` | no | Cloudflare AI Gateway token. Only needed when that gateway has Authenticated Gateway enabled |
 
 The model list, temperature, timezone (default `America/Sao_Paulo`) and a few other defaults live in `src/medical_agent/core/config.py` rather than in `.env` — adjust them there if needed.
 
@@ -181,6 +184,31 @@ curl -X POST http://localhost:8000/admin/professionals/<calendar_id> \
 ```
 
 Both calls are idempotent — registering an already-registered calendar, or removing one that isn't registered, returns a `2xx` with a `status` field (`registered` / `already_registered` / `removed` / `not_registered`) rather than an error. Removing a professional (e.g. they've left) is the same call with `DELETE` instead of `POST`.
+
+## Routing LLM traffic through a gateway (optional)
+
+`OPENROUTER_BASE_URL` sets the base URL the LLM service talks to. It defaults to OpenRouter itself, so leaving it unset produces a request byte for byte identical to one made with no gateway at all — the test suite never learns a gateway exists, local development can bypass it, and backing out during an incident means deleting one line from `.env` rather than shipping a deploy.
+
+Pointing it at a [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) provider-native endpoint routes every call through it:
+
+```bash
+OPENROUTER_BASE_URL=https://gateway.ai.cloudflare.com/v1/<ACCOUNT_ID>/<GATEWAY>/openrouter
+CF_AIG_TOKEN=<token>   # only when Authenticated Gateway is enabled
+```
+
+The provider-native endpoint is used rather than Cloudflare's unified REST API because it forwards the request body untouched, preserving OpenRouter's own `models` fallback array and `provider` routing — the unified endpoint normalises both away.
+
+What it buys, none of which changes the agent's behaviour:
+
+| Capability | Why it matters here |
+|---|---|
+| Cost and latency per call | Tagged per graph node, so it is visible which of the two LLM calls is the expensive one |
+| Which model actually answered | `models` is a fallback list; the gateway log names the one that served each request |
+| Response caching | Identical requests return from cache, with no tokens spent |
+| Rate limiting | Enforced at Cloudflare's edge, before the request reaches the provider |
+| DLP scanning | Flags identifiers — national ID numbers among them — travelling inside prompts |
+
+This complements LangSmith rather than replacing it. LangSmith traces what happened *inside* the graph: the prompt, the extracted `Intent`, which branch ran. The gateway records what happened *on the wire*: status code, cost, cache hit, latency. When a date is extracted wrong, the answer is in LangSmith; when a call takes nine seconds, it is in the gateway.
 
 ## Development
 

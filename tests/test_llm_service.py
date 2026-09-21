@@ -29,6 +29,18 @@ def _service(handler, settings: Settings | None = None) -> OpenRouterService:
     return OpenRouterService(settings or _settings(), http_client)
 
 
+def _capturing_handler(captured: dict):
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured['headers'] = request.headers
+        captured['url'] = str(request.url)
+        return httpx.Response(
+            200,
+            json={'model': 'm', 'choices': [{'message': {'content': 'ok'}}]},
+        )
+
+    return handler
+
+
 def test_generate_returns_a_chat_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -156,3 +168,59 @@ def test_call_raises_upstream_error_when_response_has_no_choices() -> None:
 
     with pytest.raises(UpstreamProviderError, match='sem creditos'):
         asyncio.run(service.generate('oi'))
+
+
+def test_adds_the_gateway_header_when_a_token_is_configured() -> None:
+    captured: dict = {}
+    settings = _settings(CF_AIG_TOKEN='aig-token')
+
+    service = _service(_capturing_handler(captured), settings)
+    asyncio.run(service.generate('oi'))
+
+    assert captured['headers']['cf-aig-authorization'] == 'Bearer aig-token'
+
+
+def test_omits_the_gateway_header_when_no_token_is_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sem token, a requisicao sai identica a de antes do gateway.
+
+    E o teste que protege a rota de rollback: apagar a variavel de
+    ambiente basta para voltar a falar direto com o OpenRouter.
+
+    O delenv e necessario porque main.py roda load_dotenv() no import,
+    o que despeja o .env dentro de os.environ antes dos testes rodarem;
+    _env_file=None desliga a leitura do arquivo, nao das variaveis.
+    """
+    monkeypatch.delenv('CF_AIG_TOKEN', raising=False)
+    captured: dict = {}
+
+    service = _service(_capturing_handler(captured))
+    asyncio.run(service.generate('oi'))
+
+    assert 'cf-aig-authorization' not in captured['headers']
+
+
+def test_builds_the_chat_url_from_the_configured_base_url() -> None:
+    """A barra final na base nao pode virar // no caminho."""
+    captured: dict = {}
+    settings = _settings(OPENROUTER_BASE_URL='https://gw.example/openrouter/')
+
+    service = _service(_capturing_handler(captured), settings)
+    asyncio.run(service.generate('oi'))
+
+    assert captured['url'] == (
+        'https://gw.example/openrouter/chat/completions'
+    )
+
+
+def test_defaults_to_calling_openrouter_directly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv('OPENROUTER_BASE_URL', raising=False)
+    captured: dict = {}
+
+    service = _service(_capturing_handler(captured))
+    asyncio.run(service.generate('oi'))
+
+    assert captured['url'] == ('https://openrouter.ai/api/v1/chat/completions')

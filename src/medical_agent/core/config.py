@@ -24,6 +24,14 @@ class Settings(BaseSettings):
         extra='ignore',
     )
 
+    openrouter_base_url: str = Field(
+        default='https://openrouter.ai/api/v1',
+        validation_alias='OPENROUTER_BASE_URL',
+    )
+    cf_aig_token: SecretStr | None = Field(
+        default=None, validation_alias='CF_AIG_TOKEN'
+    )
+
     openrouter_api_key: SecretStr = Field(
         validation_alias='OPENROUTER_API_KEY'
     )

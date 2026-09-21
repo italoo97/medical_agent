@@ -10,9 +10,7 @@ from medical_agent.exceptions import UpstreamProviderError
 from medical_agent.schemas.chat import ChatResponse
 from medical_agent.services.base import BaseLLMService
 
-OPENROUTER_CHAT_URL: Final[str] = (
-    'https://openrouter.ai/api/v1/chat/completions'
-)
+CHAT_COMPLETIONS_PATH: Final[str] = '/chat/completions'
 
 SchemaT = TypeVar('SchemaT', bound=BaseModel)
 
@@ -25,6 +23,9 @@ class OpenRouterService(BaseLLMService):
     ) -> None:
         self._settings = settings
         self._http_client = http_client
+        self._chat_url = (
+            settings.openrouter_base_url.rstrip('/') + CHAT_COMPLETIONS_PATH
+        )
 
     @traceable(name='openrouter_generate')
     async def generate(
@@ -74,7 +75,7 @@ class OpenRouterService(BaseLLMService):
 
         try:
             response = await self._http_client.post(
-                OPENROUTER_CHAT_URL,
+                self._chat_url,
                 headers=self._build_headers(),
                 json=payload,
             )
@@ -97,11 +98,19 @@ class OpenRouterService(BaseLLMService):
 
     def _build_headers(self) -> dict[str, str]:
         api_key = self._settings.openrouter_api_key.get_secret_value()
-        return {
+        headers = {
             'Authorization': f'Bearer {api_key}',
             'HTTP-Referer': self._settings.http_referer,
             'X-Title': self._settings.x_title,
         }
+
+        aig_token = self._settings.cf_aig_token
+        if aig_token is not None:
+            headers['cf-aig-authorization'] = (
+                f'Bearer {aig_token.get_secret_value()}'
+            )
+
+        return headers
 
     def _build_payload(
         self,
