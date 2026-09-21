@@ -37,6 +37,8 @@ mypy = "^1.13.0"
 taskipy = "^1.14.0"    
 pre-commit = "^4.0.0"    
 commitizen = "^4.0.0"    
+langgraph-cli = {extras = ["inmem"], version = "^0.4.0"}
+langgraph-api = "^0.13.0"
 
 [tool.ruff]
 line-length = 79      
@@ -79,10 +81,11 @@ type_check = "mypy src/"
 gate       = "poetry run task lint && poetry run task type_check && poetry run task test"
 server     = "uvicorn medical_agent.main:app --reload"
 cli        = "python -m medical_agent.main"
+studio     = "langgraph dev"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]              
 pythonpath = ["src"]              
 python_files = ["test_*.py"]      
 python_functions = ["test_*"]     
-addopts = "--cov=medical_agent --cov-report=term-missing --cov-fail-under=0"
+addopts = "--cov=medical_agent --cov-report=term-missing --cov-fail-under=85"
