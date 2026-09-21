@@ -60,3 +60,12 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Estado local da aplicacao (checkpointer de conversa)
+*.db
+
+# Config local de editor / assistente
+.claude/settings.local.json
+
+# Scratch / arquivos a descartar
+scripts/_to_delete/
