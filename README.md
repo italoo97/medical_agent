@@ -3,6 +3,7 @@
 [![CI](https://github.com/italoo97/medical_agent/actions/workflows/ci.yml/badge.svg)](https://github.com/italoo97/medical_agent/actions/workflows/ci.yml)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.x-1C3C3C.svg)](https://www.langchain.com/langgraph)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
 
 A conversational agent that schedules, cancels, and looks up medical appointments on behalf of a patient, backed by **real Google Calendars** (one calendar per professional) instead of an in-memory or hardcoded roster.
 
@@ -65,9 +66,10 @@ src/medical_agent/
 ├── schemas/chat.py              # ChatRequest / ChatResponse (HTTP contracts)
 ├── graph/
 │   ├── factory.py               # builds and compiles the StateGraph
-│   ├── routing.py                # routes on the extracted intent
-│   ├── state.py                  # AppointmentState (TypedDict)
-│   └── nodes/                     # identify_intent, scheduler, canceller, checker, message_generator
+│   ├── entry.py                  # factory used by `langgraph dev` (see langgraph.json)
+│   ├── routing.py                 # routes on the extracted intent
+│   ├── state.py                   # AppointmentState (TypedDict)
+│   └── nodes/                      # identify_intent, scheduler, canceller, checker, message_generator
 ├── prompts/v1/                   # prompt-building code
 │   ├── templates/*.md             # the actual prompt text lives here, not in .py files
 │   └── _loader.py                  # parses `### section` headers out of the .md files
@@ -130,7 +132,14 @@ Short commands are wired up via [taskipy](https://github.com/taskipy/taskipy):
 ```bash
 poetry run task server   # FastAPI server on http://0.0.0.0:8000, exposing POST /chat
 poetry run task cli      # talk to the agent directly in the terminal
+poetry run task studio   # langgraph dev -- visual debugger (see below)
 ```
+
+### LangGraph Studio
+
+`poetry run task studio` runs [`langgraph dev`](https://docs.langchain.com/oss/python/langgraph/local-server), which starts an in-memory API server (`http://127.0.0.1:2024`) for the compiled graph and prints a LangSmith Studio link (`https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024`). Studio runs in the browser but talks to that local server, so you can see the node graph, step through a run turn by turn, edit the state, and replay from any checkpoint -- without touching `/chat` or the CLI.
+
+It's driven by `langgraph.json` at the repo root, which points at `src/medical_agent/graph/entry.py:graph` -- a factory that builds the same graph as `main.build_context()`, minus the `async with` cleanup (the dev server owns the process for the whole session, so nothing needs to be closed early). `langgraph dev` also instruments known blocking calls (sqlite3, file reads) on its event loop, so `entry.py` builds `ConversationStateStore` and `GoogleCalendarClient` inside `asyncio.to_thread` -- neither is truly async, but this keeps the dev server's watchdog happy without rewriting them. `LANGSMITH_API_KEY` in `.env` is optional for the server to run, but required for traces to show up in LangSmith; in-Studio tracing itself needs `langgraph-api` 0.11.0+, which is why it's pinned directly in `[tool.poetry.group.dev.dependencies]` instead of relying on whatever `langgraph-cli[inmem]` resolves to.
 
 ## API reference
 
@@ -139,8 +148,13 @@ poetry run task cli      # talk to the agent directly in the terminal
 ```bash
 curl -X POST http://localhost:8000/chat \
   -H 'Content-Type: application/json' \
-  -d '{"question": "I am Maria Santos, I want to see a cardiologist next Monday at 4pm"}'
+  -d '{
+    "question": "I am Maria Santos, I want to see a cardiologist next Monday at 4pm",
+    "session_id": "any-string-that-identifies-this-conversation"
+  }'
 ```
+
+`session_id` is required -- it's what ties together turns of the same conversation (so a follow-up message can fill in a detail you forgot the first time, or cancel an appointment without repeating your name). Use a stable value per conversation (e.g. a UUID your client generates once per chat session), not a new one on every request.
 
 Returns the natural-language reply alongside structured fields describing what the agent actually did, useful for a UI or an automated client that shouldn't have to parse prose:
 
@@ -173,7 +187,7 @@ Both calls are idempotent — registering an already-registered calendar, or rem
 ```bash
 poetry run task lint         # ruff check
 poetry run task type_check   # mypy --strict
-poetry run task test         # pytest, with an HTML coverage report in htmlcov/
+poetry run task test         # pytest, with an HTML coverage report in htmlcov/ (fails under 85% coverage)
 poetry run task gate         # all three of the above, in sequence
 ```
 
@@ -191,5 +205,4 @@ Tests never hit a real API: `FakeCalendarClient` is a fully in-memory stand-in f
 
 ## Known limitations
 
-- **No conversation memory.** Every message is processed independently; the agent doesn't remember earlier turns in the same conversation. Asking it to cancel an appointment and then, in a follow-up message, providing the missing patient name won't work today — LangGraph supports checkpointing for this, it just isn't wired up yet.
 - **Single calendar per professional, single timezone.** All calendars are assumed to be in the timezone configured in `core/config.py`.
